@@ -4,6 +4,8 @@ import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 from openai import OpenAI
 import io
+# 新增导入：用于生成Word文档
+from docx import Document
 
 # --- 1. 页面配置 ---
 st.set_page_config(page_title="亚马逊竞品全生命周期追踪系统", layout="wide", initial_sidebar_state="expanded")
@@ -223,11 +225,27 @@ if uploaded_files:
                         report_content = response.choices[0].message.content
                         st.markdown(report_content)
 
+                        # ========== 核心修改：生成Word文档并提供下载 ==========
+                        # 1. 创建Word文档对象
+                        doc = Document()
+                        # 2. 添加报告标题
+                        doc.add_heading('亚马逊竞品深度分析报告', level=1)
+                        # 3. 拆分报告内容为段落，逐行添加（处理换行）
+                        content_lines = report_content.split('\n')
+                        for line in content_lines:
+                            if line.strip():  # 跳过空行
+                                doc.add_paragraph(line.strip())
+                        # 4. 将Word文档保存到字节流（避免本地文件）
+                        doc_io = io.BytesIO()
+                        doc.save(doc_io)
+                        doc_io.seek(0)  # 重置字节流指针到开头
+
+                        # 5. 生成Word格式下载按钮
                         st.download_button(
-                            label="📥 导出分析报告 (.txt)",
-                            data=report_content,
-                            file_name=f"竞品分析报告_{pd.Timestamp.now().strftime('%m%d')}.txt",
-                            mime="text/plain"
+                            label="📥 导出分析报告 (.docx)",
+                            data=doc_io,
+                            file_name=f"竞品分析报告_{pd.Timestamp.now().strftime('%m%d')}.docx",
+                            mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document"
                         )
                     except Exception as e:
                         st.error(f"AI 分析失败: {e}")
